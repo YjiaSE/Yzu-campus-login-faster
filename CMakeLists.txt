@@ -1,54 +1,27 @@
 cmake_minimum_required(VERSION 3.16)
-project(YzuCampusnetLogin VERSION 0.2.0 LANGUAGES CXX)
+
+project(YzuCampusnetLogin VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(BUILD_GUI "Build the Qt Widgets desktop application" ON)
-option(BUILD_TESTING "Build automated tests" OFF)
 find_package(CURL REQUIRED)
 
-function(enable_warnings target)
-    if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /utf-8)
-    else()
-        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
-    endif()
-endfunction()
+add_executable(netool
+    src/campus_net.cpp
+    src/config.cpp
+    src/http_client.cpp
+    src/main.cpp
+    src/self_service.cpp
+    src/utils.cpp
+)
 
-add_library(campus_core
-    src/campus_net.cpp src/config.cpp src/http_client.cpp
-    src/self_service.cpp src/utils.cpp)
-target_include_directories(campus_core PUBLIC src)
-target_link_libraries(campus_core PUBLIC CURL::libcurl)
-enable_warnings(campus_core)
+target_include_directories(netool PRIVATE src)
+target_link_libraries(netool PRIVATE CURL::libcurl)
 
-add_executable(netool src/main.cpp)
-target_link_libraries(netool PRIVATE campus_core)
-enable_warnings(netool)
-
-if(BUILD_GUI)
-    find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
-    add_library(campus_gui src/gui/main_window.cpp src/gui/network_worker.cpp)
-    set_target_properties(campus_gui PROPERTIES AUTOMOC ON)
-    target_link_libraries(campus_gui PUBLIC campus_core Qt${QT_VERSION_MAJOR}::Widgets)
-    enable_warnings(campus_gui)
-    add_executable(netool-gui WIN32 MACOSX_BUNDLE src/gui/main.cpp)
-    target_link_libraries(netool-gui PRIVATE campus_gui)
-    enable_warnings(netool-gui)
-endif()
-
-if(BUILD_TESTING)
-    enable_testing()
-    if(BUILD_GUI)
-        find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Test)
-        add_executable(gui_tests tests/gui_tests.cpp)
-        set_target_properties(gui_tests PROPERTIES AUTOMOC ON)
-        target_link_libraries(gui_tests PRIVATE campus_gui Qt${QT_VERSION_MAJOR}::Test)
-        enable_warnings(gui_tests)
-        add_test(NAME gui_tests COMMAND gui_tests)
-        set_tests_properties(gui_tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-    endif()
+if(MSVC)
+    target_compile_options(netool PRIVATE /W4)
+else()
+    target_compile_options(netool PRIVATE -Wall -Wextra -Wpedantic)
 endif()

@@ -6,7 +6,6 @@
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -79,19 +78,17 @@ std::chrono::seconds parseDurationSeconds(const std::string& value, std::chrono:
     }
 
     const auto unit = value.substr(parsed);
-    long long multiplier = 1;
+    if (unit.empty() || unit == "s") {
+        return std::chrono::seconds(amount);
+    }
     if (unit == "m") {
-        multiplier = 60;
-    } else if (unit == "h") {
-        multiplier = 3600;
-    } else if (!unit.empty() && unit != "s") {
-        throw std::runtime_error("invalid duration unit: " + value);
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::minutes(amount));
     }
-    // Keep durations representable as milliseconds by a Qt timer as well.
-    if (amount < 0 || amount > std::numeric_limits<int>::max() / 1000 / multiplier) {
-        throw std::runtime_error("duration out of range: " + value);
+    if (unit == "h") {
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::hours(amount));
     }
-    return std::chrono::seconds(amount * multiplier);
+
+    throw std::runtime_error("invalid duration unit: " + value);
 }
 
 bool isValidService(const std::string& service)
@@ -144,35 +141,26 @@ Config loadConfig(int argc, char* argv[])
         }
     }
 
-    auto config = loadConfigFile(env_file);
-    config.logout = logout;
-    return config;
-}
-
-Config loadConfigFile(const std::string& path, bool require_credentials)
-{
-    const auto file_env = readEnvFile(path);
+    const auto file_env = readEnvFile(env_file);
 
     Config config;
+    config.logout = logout;
     config.user_agent = getConfigValue(file_env, "USER_AGENT");
     if (config.user_agent.empty()) {
         config.user_agent = kDefaultUserAgent;
     }
 
     config.sso_username = getConfigValue(file_env, "SSO_USERNAME");
-    if (require_credentials && config.sso_username.empty()) {
+    if (config.sso_username.empty()) {
         throw std::runtime_error("SSO_USERNAME is not set");
     }
 
     config.sso_password = getConfigValue(file_env, "SSO_PASSWORD");
-    if (require_credentials && config.sso_password.empty()) {
+    if (config.sso_password.empty()) {
         throw std::runtime_error("SSO_PASSWORD is not set");
     }
 
     config.campusnet_service = getConfigValue(file_env, "CAMPUSNET_SERVICE");
-    if (!require_credentials && config.campusnet_service.empty()) {
-        config.campusnet_service = "学校互联网服务";
-    }
     if (config.campusnet_service.empty()) {
         throw std::runtime_error("CAMPUSNET_SERVICE is not set");
     }
@@ -182,9 +170,6 @@ Config loadConfigFile(const std::string& path, bool require_credentials)
 
     config.check_interval = parseDurationSeconds(getConfigValue(file_env, "CHECK_INTERVAL"), std::chrono::seconds(60));
     config.start_delay = parseDurationSeconds(getConfigValue(file_env, "START_DELAY"), std::chrono::seconds(5));
-    if (config.check_interval.count() == 0) {
-        throw std::runtime_error("CHECK_INTERVAL must be greater than zero");
-    }
     config.debug = getConfigValue(file_env, "DEBUG") == "true";
 
     return config;

@@ -16,8 +16,6 @@ struct Config {
     bool logout{false};
 };
 
-// GUI may load an incomplete configuration before the user enters credentials.
-Config loadConfigFile(const std::string& path, bool require_credentials = true);
 Config loadConfig(int argc, char* argv[]);
 
 } // namespace yzu
