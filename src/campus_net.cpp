@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+ 
 namespace yzu {
 
 CampusNet::CampusNet(CurlHttpClient& client, std::string user_agent)
